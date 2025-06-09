@@ -89,17 +89,10 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   }
 
   die(): void {
-    // 死亡动画
-    this.scene.tweens.add({
-      targets: this,
-      alpha: 0,
-      scale: 0.5,
-      duration: 200,
-      onComplete: () => {
-        this.setActive(false);
-        this.setVisible(false);
-      }
-    });
+    // 立即消失
+    this.setActive(false);
+    this.setVisible(false);
+    this.destroy(); // 完全销毁僵尸对象
   }
 
   update(): void {

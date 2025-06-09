@@ -800,11 +800,6 @@ export class MainScene extends Phaser.Scene {
                 console.log('普通击杀奖励: 10金币');
             }
             this.coinsText.setText('金币: ' + this.coins);
-            // 随机掉落道具
-            if (Phaser.Math.Between(1, 10) === 1) {
-                this.spawnItem(zombie.x, zombie.y);
-                console.log('掉落道具!');
-            }
             this.score += 10;
             this.scoreText.setText('分数: ' + this.score);
             // 检查成就
