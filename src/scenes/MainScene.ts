@@ -370,8 +370,10 @@ export class MainScene extends Phaser.Scene {
                 // 检查子弹是否超出屏幕边界
                 if (sprite.x < -50 || sprite.x > this.screenW + 50 || 
                     sprite.y < -50 || sprite.y > this.screenH + 50) {
+                    console.log('子弹超出边界，立即消失');
                     sprite.setActive(false);
                     sprite.setVisible(false);
+                    sprite.destroy(); // 完全销毁子弹
                 }
             }
         });
@@ -793,7 +795,7 @@ export class MainScene extends Phaser.Scene {
 
         // 检查僵尸是否可以被穿透
         if (!zombie.canBePenetrated) {
-            console.log('僵尸不可被穿透，子弹消失');
+            console.log('僵尸不可被穿透，子弹立即消失');
             // 计算伤害
             let damage = bullet.damage;
             if (this.skills.doubleDamage) {
@@ -839,15 +841,19 @@ export class MainScene extends Phaser.Scene {
                 }
             }
 
-            // 子弹消失
-            bullet.reset();
+            // 子弹立即消失
+            bullet.setActive(false);
+            bullet.setVisible(false);
+            bullet.destroy();
             return;
         }
 
         // 检查子弹是否可以穿透
         if (!bullet.canPenetrate(zombie)) {
-            console.log('子弹无法穿透，重置子弹');
-            bullet.reset();
+            console.log('子弹无法穿透，立即消失');
+            bullet.setActive(false);
+            bullet.setVisible(false);
+            bullet.destroy();
             return;
         }
 
@@ -902,8 +908,10 @@ export class MainScene extends Phaser.Scene {
 
         // 检查子弹是否应该销毁
         if (bullet.shouldDestroy()) {
-            console.log('子弹达到最大穿透次数，重置子弹');
-            bullet.reset();
+            console.log('子弹达到最大穿透次数，立即消失');
+            bullet.setActive(false);
+            bullet.setVisible(false);
+            bullet.destroy();
         }
     }
 
