@@ -240,6 +240,89 @@ export class MainScene extends Phaser.Scene {
         skillConfigs.forEach(config => {
             this.skills[config.type] = new Skill(config, (type: SkillType) => this.showSkillTip(config.name + ' 已解锁！'));
         });
+
+        // 创建商店菜单
+        const shopConfig: ShopConfig = {
+            items: [
+                {
+                    id: 'doubleDamage',
+                    name: '双倍伤害',
+                    description: '使所有攻击伤害翻倍',
+                    cost: 100,
+                    skill: 'doubleDamage',
+                    category: 'weapon',
+                    unlockCondition: { type: 'wave', value: 2 }
+                },
+                {
+                    id: 'rapidFire',
+                    name: '快速射击',
+                    description: '提升50%射击速度',
+                    cost: 150,
+                    skill: 'rapidFire',
+                    category: 'weapon',
+                    unlockCondition: { type: 'wave', value: 3 }
+                },
+                {
+                    id: 'shieldRegen',
+                    name: '护盾恢复',
+                    description: '每10秒自动恢复1点护盾',
+                    cost: 200,
+                    skill: 'shieldRegen',
+                    category: 'defense',
+                    unlockCondition: { type: 'wave', value: 4 }
+                },
+                {
+                    id: 'coinMagnet',
+                    name: '金币磁铁',
+                    description: '自动吸引周围的金币',
+                    cost: 250,
+                    skill: 'coinMagnet',
+                    category: 'utility',
+                    unlockCondition: { type: 'score', value: 1000 }
+                },
+                {
+                    id: 'ultimate',
+                    name: '终极技能',
+                    description: '清除所有僵尸（30秒冷却）',
+                    cost: 500,
+                    skill: 'ultimate',
+                    category: 'ultimate',
+                    unlockCondition: { type: 'wave', value: 5 }
+                }
+            ],
+            categories: {
+                weapon: '武器',
+                defense: '防御',
+                utility: '功能',
+                ultimate: '终极'
+            }
+        };
+        // 创建商店，位置由Shop类内部处理
+        this.shopMenu = new Shop(this, 0, 0, shopConfig);
+
+        // 监听商店购买事件
+        this.events.on('itemPurchased', (item: ShopItem) => {
+            if (this.skills[item.skill]) {
+                this.skills[item.skill].unlock();
+            }
+        });
+
+        // 每波更新商店解锁条件
+        this.events.on('waveComplete', () => {
+            this.shopMenu.updateUnlockConditions(this.wave, this.score, this.zombies.getChildren().length);
+        });
+
+        // 随机折扣系统
+        this.time.addEvent({
+            delay: 30000, // 每30秒
+            callback: () => {
+                const items = this.shopMenu.items;
+                const randomItem = items[Phaser.Math.Between(0, items.length - 1)];
+                const discount = Phaser.Math.FloatBetween(0.1, 0.3); // 10%-30%的折扣
+                this.shopMenu.applyDiscount(randomItem.id, discount);
+            },
+            loop: true
+        });
     }
 
     update(): void {
@@ -317,17 +400,6 @@ export class MainScene extends Phaser.Scene {
 
         // 创建暂停菜单
         this.createPauseMenu();
-        // 创建商店菜单
-        const shopConfig: ShopConfig = {
-            items: [
-                { name: '双倍伤害', cost: 100, skill: 'doubleDamage' },
-                { name: '快速射击', cost: 150, skill: 'rapidFire' },
-                { name: '护盾恢复', cost: 200, skill: 'shieldRegen' },
-                { name: '金币磁铁', cost: 250, skill: 'coinMagnet' },
-                { name: '终极技能', cost: 500, skill: 'ultimate' }
-            ]
-        };
-        this.shopMenu = new Shop(this, 400, 300, shopConfig);
     }
 
     private useUltimate(): void {
@@ -540,7 +612,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     private createPauseMenu(): void {
-        this.pauseMenu = this.add.container(400, 300);
+        this.pauseMenu = this.add.container(this.screenW / 2, this.screenH / 2);
         const bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.8);
         const title = this.add.text(0, -100, '游戏暂停', {
             fontSize: '48px',
