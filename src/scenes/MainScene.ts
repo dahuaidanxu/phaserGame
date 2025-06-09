@@ -358,6 +358,9 @@ export class MainScene extends Phaser.Scene {
                 item.setVisible(false);
             }
         });
+
+        // 更新玩家
+        this.player.update();
     }
 
     private createUI(): void {
@@ -485,6 +488,10 @@ export class MainScene extends Phaser.Scene {
     }
 
     private fire(): void {
+        // 检查是否有僵尸
+        const hasZombies = this.zombies.getChildren().some((zombie) => zombie.active);
+        if (!hasZombies || !this.player.canFire()) return;
+
         // 找到最近的僵尸
         let nearestZombie: Phaser.Physics.Arcade.Sprite | null = null;
         let minDistance = Infinity;
@@ -510,8 +517,7 @@ export class MainScene extends Phaser.Scene {
             const zombie = nearestZombie as Phaser.Physics.Arcade.Sprite;
             angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, zombie.x, zombie.y);
         } else {
-            // 如果没有僵尸，向上发射
-            angle = -Math.PI / 2; // 向上发射的角度
+            return; // 如果没有僵尸，不发射子弹
         }
 
         velocityX = Math.cos(angle) * speed;
@@ -521,12 +527,55 @@ export class MainScene extends Phaser.Scene {
         const bulletConfig: BulletConfig = {
             type: this.player.weaponType as BulletType,
             speed: 400,
-            damage: this.skills.doubleDamage ? 2 : 1
+            damage: this.skills.doubleDamage ? 2 : 1,
+            penetration: this.player.weaponLevel >= 3 ? 1 : 0
         };
         const bullet = new Bullet(this, this.player.x, this.player.y, bulletConfig);
         bullet.setVelocity(velocityX, velocityY);
         bullet.setRotation(angle);
-        this.bullets.add(bullet);
+
+        // 添加子弹特效
+        this.createBulletTrail(bullet);
+
+        // 更新玩家弹药
+        this.player.fire();
+    }
+
+    private createBulletTrail(bullet: Bullet): void {
+        const trail = this.add.graphics();
+        const points: Phaser.Math.Vector2[] = [];
+        const maxPoints = 5;
+        
+        const updateTrail = () => {
+            if (!bullet.active) {
+                trail.destroy();
+                return;
+            }
+            
+            points.push(new Phaser.Math.Vector2(bullet.x, bullet.y));
+            if (points.length > maxPoints) {
+                points.shift();
+            }
+            
+            trail.clear();
+            trail.lineStyle(2, 0xffff00, 0.5);
+            trail.beginPath();
+            points.forEach((point, index) => {
+                if (index === 0) {
+                    trail.moveTo(point.x, point.y);
+                } else {
+                    trail.lineTo(point.x, point.y);
+                }
+            });
+            trail.strokePath();
+        };
+        
+        this.time.addEvent({
+            delay: 16,
+            callback: updateTrail,
+            callbackScope: this,
+            loop: true
+        });
     }
 
     private hitPlayer(player: any, zombie: any): void {
@@ -683,20 +732,29 @@ export class MainScene extends Phaser.Scene {
         this.zombies.add(zombie);
     }
 
-    private hitZombie(bullet: any, zombie: any): void {
-        bullet.setActive(false);
-        bullet.setVisible(false);
-
-        let damage = 1;
-        if (this.skills.doubleDamage) {
-            damage = 2;
+    private hitZombie(bullet: Bullet, zombie: Zombie): void {
+        // 检查子弹是否可以穿透
+        if (!bullet.canPenetrate(zombie)) {
+            bullet.reset();
+            return;
         }
 
-        let hp = zombie.getData('hp') - damage;
-        if (hp <= 0) {
-            this.createExplosion(zombie.x, zombie.y);
+        // 记录已击中的僵尸
+        bullet.addHitZombie(zombie);
+
+        // 计算伤害
+        let damage = bullet.damage;
+        if (this.skills.doubleDamage) {
+            damage *= 2;
+        }
+
+        // 应用伤害
+        zombie.takeDamage(damage);
+        
+        if (zombie.hp <= 0) {
+            zombie.die();
             // 掉落金币
-            if (zombie.getData('type') === 'boss') {
+            if (zombie.type === 'boss') {
                 this.coins += 50;
                 this.achievements.bossKill.unlock();
             } else {
@@ -707,8 +765,6 @@ export class MainScene extends Phaser.Scene {
             if (Phaser.Math.Between(1, 10) === 1) {
                 this.spawnItem(zombie.x, zombie.y);
             }
-            zombie.setActive(false);
-            zombie.setVisible(false);
             this.score += 10;
             this.scoreText.setText('分数: ' + this.score);
             // 检查成就
@@ -718,14 +774,11 @@ export class MainScene extends Phaser.Scene {
             if (this.score >= 5000 && !this.achievements.score5000.unlocked) {
                 this.achievements.score5000.unlock();
             }
-        } else {
-            zombie.setData('hp', hp);
-            zombie.setTint(0xffffff);
-            this.time.delayedCall(100, () => {
-                if (zombie.active) {
-                    zombie.clearTint();
-                }
-            });
+        }
+
+        // 如果子弹达到最大穿透次数，则销毁子弹
+        if (bullet.penetration >= bullet.maxPenetration) {
+            bullet.reset();
         }
     }
 

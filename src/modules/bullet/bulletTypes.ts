@@ -4,5 +4,6 @@ export interface BulletConfig {
   type: BulletType;
   speed: number;
   damage: number;
+  penetration?: number;
   tint?: number;
 } 
