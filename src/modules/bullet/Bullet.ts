@@ -30,17 +30,36 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(8); // 增加碰撞半径为8像素
     this.setBounce(0);
     this.setCollideWorldBounds(false);
+    this.setImmovable(true);
+    if (this.body instanceof Phaser.Physics.Arcade.Body) {
+        this.body.gravity.x = 0;
+        this.body.gravity.y = 0;
+    }
   }
 
   // 检查子弹是否可以穿透目标
   canPenetrate(zombie: Phaser.Physics.Arcade.Sprite): boolean {
+    console.log('检查穿透：', {
+      penetration: this.penetration,
+      maxPenetration: this.maxPenetration,
+      hasHit: this.hitZombies.has(zombie)
+    });
+    // 如果子弹还没有达到最大穿透次数，并且没有击中过这个僵尸，就可以穿透
     return this.penetration < this.maxPenetration && !this.hitZombies.has(zombie);
   }
 
   // 记录已击中的僵尸
   addHitZombie(zombie: Phaser.Physics.Arcade.Sprite): void {
+    console.log('记录击中：', {
+      beforePenetration: this.penetration,
+      beforeHitCount: this.hitZombies.size
+    });
     this.hitZombies.add(zombie);
     this.penetration++;
+    console.log('记录击中后：', {
+      afterPenetration: this.penetration,
+      afterHitCount: this.hitZombies.size
+    });
   }
 
   // 重置子弹状态

@@ -152,9 +152,34 @@ export class MainScene extends Phaser.Scene {
         this.createUI();
 
         // 设置碰撞
-        this.physics.add.collider(this.bullets, this.zombies, this.hitZombie as any, undefined, this);
+        this.physics.add.collider(this.bullets, this.zombies, (bullet, zombie) => {
+            console.log('碰撞检测触发');
+            this.hitZombie(bullet as Bullet, zombie as Zombie);
+        }, undefined, this);
         this.physics.add.collider(this.player, this.zombies, this.hitPlayer as any, undefined, this);
         this.physics.add.collider(this.player, this.items, this.collectItem as any, undefined, this);
+
+        // 添加调试信息
+        this.physics.world.on('worldstep', () => {
+            this.bullets.getChildren().forEach((bullet) => {
+                if (bullet.active) {
+                    const bulletSprite = bullet as Phaser.Physics.Arcade.Sprite;
+                    this.zombies.getChildren().forEach((zombie) => {
+                        if (zombie.active) {
+                            const zombieSprite = zombie as Phaser.Physics.Arcade.Sprite;
+                            const distance = Phaser.Math.Distance.Between(
+                                bulletSprite.x, bulletSprite.y,
+                                zombieSprite.x, zombieSprite.y
+                            );
+                            if (distance < 32) { // 如果距离小于碰撞半径之和
+                                console.log('检测到碰撞！');
+                                this.hitZombie(bullet as Bullet, zombie as Zombie);
+                            }
+                        }
+                    });
+                }
+            });
+        });
 
         // 定时生成僵尸
         this.zombieSpawnTimer = this.time.addEvent({
@@ -525,7 +550,7 @@ export class MainScene extends Phaser.Scene {
             type: this.player.weaponType as BulletType,
             speed: 800,
             damage: this.skills.doubleDamage ? 4 : 2,
-            penetration: this.player.weaponLevel >= 3 ? 1 : 0
+            penetration: 1 // 设置默认穿透值为1
         };
         const bullet = new Bullet(this, this.player.x, this.player.y, bulletConfig);
         this.bullets.add(bullet); // 添加子弹到组中
@@ -731,8 +756,11 @@ export class MainScene extends Phaser.Scene {
     }
 
     private hitZombie(bullet: Bullet, zombie: Zombie): void {
+        console.log('hitZombie方法被调用'); // 添加调试日志
+
         // 检查子弹是否可以穿透
         if (!bullet.canPenetrate(zombie)) {
+            console.log('子弹无法穿透，重置子弹');
             bullet.reset();
             return;
         }
@@ -747,9 +775,14 @@ export class MainScene extends Phaser.Scene {
         }
 
         // 控制台输出伤害信息
+        console.log('----------------------------------------');
         console.log(`僵尸类型: ${zombie.type}`);
+        console.log(`当前生命值: ${zombie.hp}`);
         console.log(`受到伤害: ${damage}`);
         console.log(`剩余生命值: ${zombie.hp - damage}`);
+        console.log(`子弹类型: ${bullet.type}`);
+        console.log(`是否暴击: ${this.skills.doubleDamage ? '是' : '否'}`);
+        console.log('----------------------------------------');
 
         // 应用伤害
         zombie.takeDamage(damage);
@@ -787,6 +820,7 @@ export class MainScene extends Phaser.Scene {
 
         // 如果子弹达到最大穿透次数，则销毁子弹
         if (bullet.penetration >= bullet.maxPenetration) {
+            console.log('子弹达到最大穿透次数，重置子弹');
             bullet.reset();
         }
     }

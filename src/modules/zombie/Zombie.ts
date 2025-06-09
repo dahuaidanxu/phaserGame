@@ -27,6 +27,11 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(24); // 增加碰撞半径为24像素
     this.setBounce(0);
     this.setCollideWorldBounds(false);
+    this.setImmovable(false); // 确保僵尸可以被推动
+    if (this.body instanceof Phaser.Physics.Arcade.Body) {
+        this.body.gravity.x = 0;
+        this.body.gravity.y = 0;
+    }
   }
 
   takeDamage(damage: number): void {
