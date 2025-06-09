@@ -27,7 +27,7 @@ export class MainScene extends Phaser.Scene {
     private wave: number = 1;
     private waveText!: UI;
     private lastFired: number = 0;
-    private fireRate: number = 500;
+    private fireRate: number = 1000;
     private zombieSpawnTimer!: Phaser.Time.TimerEvent;
     private zombieSpawnDelay: number = 2000;
     
@@ -737,19 +737,19 @@ export class MainScene extends Phaser.Scene {
         let zombieConfig: ZombieConfig;
         switch (type) {
             case 1:
-                zombieConfig = { type: 'normal', hp: 3, speed: 50 + this.wave * 5, scale: 1 };
+                zombieConfig = { type: 'normal', hp: 20, speed: 20 + this.wave, scale: 1 }; // 血量翻倍，速度减半
                 break;
             case 2:
-                zombieConfig = { type: 'fast', hp: 1, speed: 100 + this.wave * 8, scale: 1, tint: 0xff0000 };
+                zombieConfig = { type: 'fast', hp: 10, speed: 40 + this.wave * 2, scale: 1, tint: 0xff0000 }; // 血量翻倍，速度降低
                 break;
             case 3:
-                zombieConfig = { type: 'elite', hp: 5, speed: 40 + this.wave * 4, scale: 1.5, tint: 0x0000ff };
+                zombieConfig = { type: 'elite', hp: 40, speed: 15 + this.wave, scale: 1.5, tint: 0x0000ff }; // 血量翻倍，速度降低
                 break;
             case 4:
-                zombieConfig = { type: 'boss', hp: 20, speed: 30, scale: 2, tint: 0xff00ff };
+                zombieConfig = { type: 'boss', hp: 100, speed: 10, scale: 2, tint: 0xff00ff }; // 血量翻倍，速度降低
                 break;
             default:
-                zombieConfig = { type: 'normal', hp: 3, speed: 50, scale: 1 };
+                zombieConfig = { type: 'normal', hp: 20, speed: 20, scale: 1 };
         }
         const zombie = new Zombie(this, x, this.viewY, zombieConfig);
         this.zombies.add(zombie);
