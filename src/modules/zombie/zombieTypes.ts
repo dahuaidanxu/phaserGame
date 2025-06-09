@@ -6,4 +6,5 @@ export interface ZombieConfig {
   speed: number;
   scale?: number;
   tint?: number;
+  canBePenetrated?: boolean;
 } 

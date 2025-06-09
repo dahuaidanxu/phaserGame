@@ -7,6 +7,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   speed: number;
   originalTint: number;
   isInvulnerable: boolean = false;
+  canBePenetrated: boolean; // 是否可被穿透
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: ZombieConfig) {
     super(scene, x, y, 'zombie');
@@ -14,6 +15,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.hp = config.hp;
     this.speed = config.speed;
     this.originalTint = config.tint || 0xffffff;
+    this.canBePenetrated = config.canBePenetrated ?? true; // 默认可以被穿透
     
     if (config.scale) this.setScale(config.scale);
     if (config.tint) this.setTint(config.tint);

@@ -70,5 +70,10 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
     this.setVisible(false);
   }
 
+  // 检查是否应该销毁子弹
+  shouldDestroy(): boolean {
+    return this.penetration >= this.maxPenetration;
+  }
+
   // 发射、碰撞等方法可在此扩展
 } 

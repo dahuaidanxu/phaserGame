@@ -737,19 +737,52 @@ export class MainScene extends Phaser.Scene {
         let zombieConfig: ZombieConfig;
         switch (type) {
             case 1:
-                zombieConfig = { type: 'normal', hp: 20, speed: 20 + this.wave, scale: 1 }; // 血量翻倍，速度减半
+                zombieConfig = { 
+                    type: 'normal', 
+                    hp: 20, 
+                    speed: 20 + this.wave, 
+                    scale: 1,
+                    canBePenetrated: true 
+                };
                 break;
             case 2:
-                zombieConfig = { type: 'fast', hp: 10, speed: 40 + this.wave * 2, scale: 1, tint: 0xff0000 }; // 血量翻倍，速度降低
+                zombieConfig = { 
+                    type: 'fast', 
+                    hp: 10, 
+                    speed: 40 + this.wave * 2, 
+                    scale: 1, 
+                    tint: 0xff0000,
+                    canBePenetrated: true 
+                };
                 break;
             case 3:
-                zombieConfig = { type: 'elite', hp: 40, speed: 15 + this.wave, scale: 1.5, tint: 0x0000ff }; // 血量翻倍，速度降低
+                zombieConfig = { 
+                    type: 'elite', 
+                    hp: 40, 
+                    speed: 15 + this.wave, 
+                    scale: 1.5, 
+                    tint: 0x0000ff,
+                    canBePenetrated: false // 精英僵尸不可被穿透
+                };
                 break;
             case 4:
-                zombieConfig = { type: 'boss', hp: 100, speed: 10, scale: 2, tint: 0xff00ff }; // 血量翻倍，速度降低
+                zombieConfig = { 
+                    type: 'boss', 
+                    hp: 100, 
+                    speed: 10, 
+                    scale: 2, 
+                    tint: 0xff00ff,
+                    canBePenetrated: false // Boss不可被穿透
+                };
                 break;
             default:
-                zombieConfig = { type: 'normal', hp: 20, speed: 20, scale: 1 };
+                zombieConfig = { 
+                    type: 'normal', 
+                    hp: 20, 
+                    speed: 20, 
+                    scale: 1,
+                    canBePenetrated: true 
+                };
         }
         const zombie = new Zombie(this, x, this.viewY, zombieConfig);
         this.zombies.add(zombie);
@@ -757,6 +790,59 @@ export class MainScene extends Phaser.Scene {
 
     private hitZombie(bullet: Bullet, zombie: Zombie): void {
         console.log('hitZombie方法被调用'); // 添加调试日志
+
+        // 检查僵尸是否可以被穿透
+        if (!zombie.canBePenetrated) {
+            console.log('僵尸不可被穿透，子弹消失');
+            // 计算伤害
+            let damage = bullet.damage;
+            if (this.skills.doubleDamage) {
+                damage *= 2;
+            }
+
+            // 控制台输出伤害信息
+            console.log('----------------------------------------');
+            console.log(`僵尸类型: ${zombie.type}`);
+            console.log(`当前生命值: ${zombie.hp}`);
+            console.log(`受到伤害: ${damage}`);
+            console.log(`剩余生命值: ${zombie.hp - damage}`);
+            console.log(`子弹类型: ${bullet.type}`);
+            console.log(`是否暴击: ${this.skills.doubleDamage ? '是' : '否'}`);
+            console.log('----------------------------------------');
+
+            // 应用伤害
+            zombie.takeDamage(damage);
+            
+            if (zombie.hp <= 0) {
+                console.log(`僵尸死亡! 类型: ${zombie.type}`);
+                zombie.die();
+                // 掉落金币
+                if (zombie.type === 'boss') {
+                    this.coins += 50;
+                    this.achievements.bossKill.unlock();
+                    console.log('Boss击杀奖励: 50金币');
+                } else {
+                    this.coins += 10;
+                    console.log('普通击杀奖励: 10金币');
+                }
+                this.coinsText.setText('金币: ' + this.coins);
+                this.score += 10;
+                this.scoreText.setText('分数: ' + this.score);
+                // 检查成就
+                if (this.score >= 1000 && !this.achievements.score1000.unlocked) {
+                    this.achievements.score1000.unlock();
+                    console.log('解锁成就: 1000分!');
+                }
+                if (this.score >= 5000 && !this.achievements.score5000.unlocked) {
+                    this.achievements.score5000.unlock();
+                    console.log('解锁成就: 5000分!');
+                }
+            }
+
+            // 子弹消失
+            bullet.reset();
+            return;
+        }
 
         // 检查子弹是否可以穿透
         if (!bullet.canPenetrate(zombie)) {
@@ -782,6 +868,7 @@ export class MainScene extends Phaser.Scene {
         console.log(`剩余生命值: ${zombie.hp - damage}`);
         console.log(`子弹类型: ${bullet.type}`);
         console.log(`是否暴击: ${this.skills.doubleDamage ? '是' : '否'}`);
+        console.log(`子弹剩余穿透次数: ${bullet.maxPenetration - bullet.penetration}`);
         console.log('----------------------------------------');
 
         // 应用伤害
@@ -813,8 +900,8 @@ export class MainScene extends Phaser.Scene {
             }
         }
 
-        // 如果子弹达到最大穿透次数，则销毁子弹
-        if (bullet.penetration >= bullet.maxPenetration) {
+        // 检查子弹是否应该销毁
+        if (bullet.shouldDestroy()) {
             console.log('子弹达到最大穿透次数，重置子弹');
             bullet.reset();
         }
