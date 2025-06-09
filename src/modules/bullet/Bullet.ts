@@ -23,8 +23,11 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
     this.setActive(true);
     this.setVisible(true);
     
+    // 设置子弹的显示大小
+    this.setDisplaySize(16, 16);
+    
     // 设置子弹的物理属性
-    this.setCircle(4); // 设置碰撞半径为4像素
+    this.setCircle(8); // 增加碰撞半径为8像素
     this.setBounce(0);
     this.setCollideWorldBounds(false);
   }

@@ -27,7 +27,7 @@ export class MainScene extends Phaser.Scene {
     private wave: number = 1;
     private waveText!: UI;
     private lastFired: number = 0;
-    private fireRate: number = 200;
+    private fireRate: number = 500;
     private zombieSpawnTimer!: Phaser.Time.TimerEvent;
     private zombieSpawnDelay: number = 2000;
     
@@ -155,13 +155,6 @@ export class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.bullets, this.zombies, this.hitZombie as any, undefined, this);
         this.physics.add.collider(this.player, this.zombies, this.hitPlayer as any, undefined, this);
         this.physics.add.collider(this.player, this.items, this.collectItem as any, undefined, this);
-
-        // 输入
-        this.input.on('pointerdown', () => {
-            if (!this.isPaused && !this.isShopOpen) {
-                this.fire();
-            }
-        });
 
         // 定时生成僵尸
         this.zombieSpawnTimer = this.time.addEvent({
@@ -328,39 +321,43 @@ export class MainScene extends Phaser.Scene {
     update(): void {
         if (this.isPaused) return;
 
+        // 更新玩家
+        this.player.update();
+
         // 自动发射子弹
         if (this.time.now > this.lastFired) {
             this.fire();
             this.lastFired = this.time.now + this.fireRate;
         }
 
-        // 更新僵尸移动
+        // 更新僵尸
         this.zombies.getChildren().forEach((zombie) => {
-            const sprite = zombie as Phaser.Physics.Arcade.Sprite;
-            if (sprite.active) {
-                const speed = sprite.getData('speed') || 100;
-                this.physics.moveToObject(sprite, this.player, speed);
+            if (zombie.active) {
+                const sprite = zombie as Phaser.Physics.Arcade.Sprite;
+                this.physics.moveToObject(sprite, this.player, sprite.getData('speed') || 100);
             }
         });
 
-        // 子弹出界回收
-        this.bullets.getChildren().forEach((bullet: any) => {
-            if (bullet.active && (bullet.y < -50 || bullet.y > 650 || bullet.x < -50 || bullet.x > 850)) {
-                bullet.setActive(false);
-                bullet.setVisible(false);
+        // 更新子弹
+        this.bullets.getChildren().forEach((bullet) => {
+            if (bullet.active) {
+                const sprite = bullet as Phaser.Physics.Arcade.Sprite;
+                // 检查子弹是否超出屏幕边界
+                if (sprite.x < -50 || sprite.x > this.screenW + 50 || 
+                    sprite.y < -50 || sprite.y > this.screenH + 50) {
+                    sprite.setActive(false);
+                    sprite.setVisible(false);
+                }
             }
         });
 
-        // 道具出界回收
-        this.items.getChildren().forEach((item: any) => {
-            if (item.active && (item.y > 650)) {
-                item.setActive(false);
-                item.setVisible(false);
-            }
-        });
-
-        // 更新玩家
-        this.player.update();
+        // 更新UI
+        this.scoreText.update();
+        this.waveText.update();
+        this.healthText.update();
+        this.shieldText.update();
+        this.coinsText.update();
+        this.skillPointsText.update();
     }
 
     private createUI(): void {
@@ -510,7 +507,7 @@ export class MainScene extends Phaser.Scene {
         let angle: number;
         let velocityX: number;
         let velocityY: number;
-        const speed = 400;
+        const speed = 800;
 
         if (nearestZombie) {
             // 如果有僵尸，瞄准最近的僵尸
@@ -526,11 +523,12 @@ export class MainScene extends Phaser.Scene {
         // 发射子弹
         const bulletConfig: BulletConfig = {
             type: this.player.weaponType as BulletType,
-            speed: 400,
-            damage: this.skills.doubleDamage ? 2 : 1,
+            speed: 800,
+            damage: this.skills.doubleDamage ? 4 : 2,
             penetration: this.player.weaponLevel >= 3 ? 1 : 0
         };
         const bullet = new Bullet(this, this.player.x, this.player.y, bulletConfig);
+        this.bullets.add(bullet); // 添加子弹到组中
         bullet.setVelocity(velocityX, velocityY);
         bullet.setRotation(angle);
 
@@ -714,19 +712,19 @@ export class MainScene extends Phaser.Scene {
         let zombieConfig: ZombieConfig;
         switch (type) {
             case 1:
-                zombieConfig = { type: 'normal', hp: 3, speed: 100 + this.wave * 10, scale: 1 };
+                zombieConfig = { type: 'normal', hp: 3, speed: 50 + this.wave * 5, scale: 1 };
                 break;
             case 2:
-                zombieConfig = { type: 'fast', hp: 1, speed: 200 + this.wave * 15, scale: 1, tint: 0xff0000 };
+                zombieConfig = { type: 'fast', hp: 1, speed: 100 + this.wave * 8, scale: 1, tint: 0xff0000 };
                 break;
             case 3:
-                zombieConfig = { type: 'elite', hp: 5, speed: 80 + this.wave * 8, scale: 1.5, tint: 0x0000ff };
+                zombieConfig = { type: 'elite', hp: 5, speed: 40 + this.wave * 4, scale: 1.5, tint: 0x0000ff };
                 break;
             case 4:
-                zombieConfig = { type: 'boss', hp: 20, speed: 50, scale: 2, tint: 0xff00ff };
+                zombieConfig = { type: 'boss', hp: 20, speed: 30, scale: 2, tint: 0xff00ff };
                 break;
             default:
-                zombieConfig = { type: 'normal', hp: 3, speed: 100, scale: 1 };
+                zombieConfig = { type: 'normal', hp: 3, speed: 50, scale: 1 };
         }
         const zombie = new Zombie(this, x, this.viewY, zombieConfig);
         this.zombies.add(zombie);
@@ -748,31 +746,42 @@ export class MainScene extends Phaser.Scene {
             damage *= 2;
         }
 
+        // 控制台输出伤害信息
+        console.log(`僵尸类型: ${zombie.type}`);
+        console.log(`受到伤害: ${damage}`);
+        console.log(`剩余生命值: ${zombie.hp - damage}`);
+
         // 应用伤害
         zombie.takeDamage(damage);
         
         if (zombie.hp <= 0) {
+            console.log(`僵尸死亡! 类型: ${zombie.type}`);
             zombie.die();
             // 掉落金币
             if (zombie.type === 'boss') {
                 this.coins += 50;
                 this.achievements.bossKill.unlock();
+                console.log('Boss击杀奖励: 50金币');
             } else {
                 this.coins += 10;
+                console.log('普通击杀奖励: 10金币');
             }
             this.coinsText.setText('金币: ' + this.coins);
             // 随机掉落道具
             if (Phaser.Math.Between(1, 10) === 1) {
                 this.spawnItem(zombie.x, zombie.y);
+                console.log('掉落道具!');
             }
             this.score += 10;
             this.scoreText.setText('分数: ' + this.score);
             // 检查成就
             if (this.score >= 1000 && !this.achievements.score1000.unlocked) {
                 this.achievements.score1000.unlock();
+                console.log('解锁成就: 1000分!');
             }
             if (this.score >= 5000 && !this.achievements.score5000.unlocked) {
                 this.achievements.score5000.unlock();
+                console.log('解锁成就: 5000分!');
             }
         }
 
