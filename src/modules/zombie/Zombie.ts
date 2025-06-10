@@ -75,18 +75,10 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.isInvulnerable = true;
     this.setTint(0xff0000);
     
-    // 受伤震动效果
-    this.scene.tweens.add({
-      targets: this,
-      x: this.x + Phaser.Math.Between(-5, 5),
-      y: this.y + Phaser.Math.Between(-5, 5),
-      duration: 50,
-      yoyo: true,
-      repeat: 2,
-      onComplete: () => {
-        this.setTint(this.originalTint);
-        this.isInvulnerable = false;
-      }
+    // 闪烁后恢复原色
+    this.scene.time.delayedCall(200, () => {
+      this.setTint(this.originalTint);
+      this.isInvulnerable = false;
     });
   }
 

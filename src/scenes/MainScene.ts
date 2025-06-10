@@ -359,7 +359,9 @@ export class MainScene extends Phaser.Scene {
         this.zombies.getChildren().forEach((zombie) => {
             if (zombie.active) {
                 const sprite = zombie as Phaser.Physics.Arcade.Sprite;
-                this.physics.moveToObject(sprite, this.player, sprite.getData('speed') || 100);
+                const zombieInstance = zombie as Zombie;
+                // 使用僵尸实例中存储的速度值
+                this.physics.moveToObject(sprite, this.player, zombieInstance.speed);
             }
         });
 
@@ -742,7 +744,7 @@ export class MainScene extends Phaser.Scene {
                 zombieConfig = { 
                     type: 'normal', 
                     hp: 20, 
-                    speed: 20 + this.wave, 
+                    speed: 8 + this.wave * 0.4, // 进一步提高普通僵尸速度
                     scale: 1,
                     canBePenetrated: true 
                 };
@@ -751,7 +753,7 @@ export class MainScene extends Phaser.Scene {
                 zombieConfig = { 
                     type: 'fast', 
                     hp: 10, 
-                    speed: 40 + this.wave * 2, 
+                    speed: 16 + this.wave * 0.8, // 进一步提高快速僵尸速度
                     scale: 1, 
                     tint: 0xff0000,
                     canBePenetrated: true 
@@ -761,27 +763,27 @@ export class MainScene extends Phaser.Scene {
                 zombieConfig = { 
                     type: 'elite', 
                     hp: 40, 
-                    speed: 15 + this.wave, 
+                    speed: 6 + this.wave * 0.3, // 进一步提高精英僵尸速度
                     scale: 1.5, 
                     tint: 0x0000ff,
-                    canBePenetrated: false // 精英僵尸不可被穿透
+                    canBePenetrated: false
                 };
                 break;
             case 4:
                 zombieConfig = { 
                     type: 'boss', 
                     hp: 100, 
-                    speed: 10, 
+                    speed: 4, // 进一步提高Boss速度
                     scale: 2, 
                     tint: 0xff00ff,
-                    canBePenetrated: false // Boss不可被穿透
+                    canBePenetrated: false
                 };
                 break;
             default:
                 zombieConfig = { 
                     type: 'normal', 
                     hp: 20, 
-                    speed: 20, 
+                    speed: 8, 
                     scale: 1,
                     canBePenetrated: true 
                 };
