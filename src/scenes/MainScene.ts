@@ -72,6 +72,12 @@ export class MainScene extends Phaser.Scene {
     private achievementTipText!: Phaser.GameObjects.Text;
     private skillTipText!: Phaser.GameObjects.Text;
 
+    private lastClickX: number = 0;
+    private lastClickY: number = 0;
+    private hasClickTarget: boolean = false;
+    private isDragging: boolean = false;
+    private currentTargetZombie: Phaser.Physics.Arcade.Sprite | null = null;
+
     constructor() {
         super({ key: 'MainScene' });
     }
@@ -376,6 +382,29 @@ export class MainScene extends Phaser.Scene {
             },
             loop: true
         });
+
+        // 添加点击和拖动事件监听
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            this.lastClickX = pointer.x;
+            this.lastClickY = pointer.y;
+            this.hasClickTarget = true;
+            this.isDragging = true;
+        });
+
+        this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+            if (this.isDragging) {
+                this.lastClickX = pointer.x;
+                this.lastClickY = pointer.y;
+            }
+        });
+
+        this.input.on('pointerup', () => {
+            this.isDragging = false;
+        });
+
+        this.input.on('pointerout', () => {
+            this.isDragging = false;
+        });
     }
 
     update(): void {
@@ -554,28 +583,48 @@ export class MainScene extends Phaser.Scene {
 
     private fire(): void {
         // 找到最近的僵尸
-        let nearestZombie: Phaser.Physics.Arcade.Sprite | null = null;
-        let minDistance = Infinity;
-        this.zombies.getChildren().forEach((zombie) => {
-            const sprite = zombie as Phaser.Physics.Arcade.Sprite;
-            if (sprite.active) {
-                const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestZombie = sprite;
+        let targetZombie: Phaser.Physics.Arcade.Sprite | null = null;
+        
+        if (this.hasClickTarget) {
+            // 如果有点击目标，找到点击位置到射击直线最近的僵尸
+            targetZombie = this.findNearestZombieOnLine();
+            // 更新当前目标
+            this.currentTargetZombie = targetZombie;
+        }
+        
+        if (!targetZombie) {
+            // 如果没有找到目标，使用原来的逻辑找最近的僵尸
+            let minDistance = Infinity;
+            this.zombies.getChildren().forEach((zombie) => {
+                const sprite = zombie as Phaser.Physics.Arcade.Sprite;
+                if (sprite.active) {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        targetZombie = sprite;
+                    }
                 }
-            }
-        });
+            });
+            // 更新当前目标
+            this.currentTargetZombie = targetZombie;
+        }
 
-        if (!nearestZombie) {
+        if (!targetZombie) {
             return; // 如果没有僵尸，不发射子弹
         }
 
-        const targetZombie = nearestZombie as Phaser.Physics.Arcade.Sprite;
         // 计算基础角度
-        const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetZombie.x, targetZombie.y);
+        let baseAngle: number;
+        if (this.hasClickTarget) {
+            // 使用点击位置计算角度
+            baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, this.lastClickX, this.lastClickY);
+        } else {
+            // 使用目标僵尸位置计算角度
+            baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetZombie.x, targetZombie.y);
+        }
+
         const speed = 800;
-        const spreadAngle = Math.PI / 18; // 弹道之间的角度差
+        const spreadAngle = Math.PI / 36;
 
         // 创建4条弹道
         for (let i = 0; i < 4; i++) {
@@ -585,7 +634,7 @@ export class MainScene extends Phaser.Scene {
             // 每条弹道发射3颗子弹，依次排列
             for (let j = 0; j < 3; j++) {
                 // 计算子弹的偏移位置（让子弹依次排列）
-                const offsetDistance = j * 50; // 每颗子弹之间的间距增加到30像素
+                const offsetDistance = j * 50;
                 const offsetX = Math.cos(angle) * offsetDistance;
                 const offsetY = Math.sin(angle) * offsetDistance;
 
@@ -600,7 +649,7 @@ export class MainScene extends Phaser.Scene {
                     penetration: 1
                 };
                 const bullet = new Bullet(this, 
-                    this.player.x - offsetX, // 从玩家位置减去偏移量
+                    this.player.x - offsetX,
                     this.player.y - offsetY, 
                     bulletConfig
                 );
@@ -890,6 +939,11 @@ export class MainScene extends Phaser.Scene {
             
             if (zombie.hp <= 0) {
                 console.log(`僵尸死亡! 类型: ${zombie.type}`);
+                // 如果当前目标僵尸死亡，重置目标
+                if (this.currentTargetZombie === zombie) {
+                    this.currentTargetZombie = null;
+                    this.hasClickTarget = false;
+                }
                 zombie.die();
                 // 掉落金币
                 if (zombie.type === 'boss') {
@@ -955,6 +1009,11 @@ export class MainScene extends Phaser.Scene {
         
         if (zombie.hp <= 0) {
             console.log(`僵尸死亡! 类型: ${zombie.type}`);
+            // 如果当前目标僵尸死亡，重置目标
+            if (this.currentTargetZombie === zombie) {
+                this.currentTargetZombie = null;
+                this.hasClickTarget = false;
+            }
             zombie.die();
             // 掉落金币
             if (zombie.type === 'boss') {
@@ -1014,5 +1073,49 @@ export class MainScene extends Phaser.Scene {
             duration: 2000,
             ease: 'Cubic.easeIn',
         });
+    }
+
+    // 找到点击位置到射击直线最近的僵尸
+    private findNearestZombieOnLine(): Phaser.Physics.Arcade.Sprite | null {
+        if (!this.hasClickTarget) return null;
+
+        let nearestZombie: Phaser.Physics.Arcade.Sprite | null = null;
+        let minDistance = Infinity;
+
+        // 计算从玩家到点击位置的向量
+        const dx = this.lastClickX - this.player.x;
+        const dy = this.lastClickY - this.player.y;
+        const lineLength = Math.sqrt(dx * dx + dy * dy);
+
+        // 如果点击位置太近，不进行瞄准
+        if (lineLength < 50) return null;
+
+        this.zombies.getChildren().forEach((zombie) => {
+            const sprite = zombie as Phaser.Physics.Arcade.Sprite;
+            if (sprite.active) {
+                // 计算僵尸到玩家-点击直线的距离
+                const px = sprite.x - this.player.x;
+                const py = sprite.y - this.player.y;
+                
+                // 计算投影点
+                const t = (px * dx + py * dy) / (lineLength * lineLength);
+                const projX = this.player.x + t * dx;
+                const projY = this.player.y + t * dy;
+                
+                // 计算僵尸到投影点的距离
+                const distX = sprite.x - projX;
+                const distY = sprite.y - projY;
+                const distance = Math.sqrt(distX * distX + distY * distY);
+                
+                // 如果僵尸在射击方向上（投影点在玩家和点击位置之间）
+                // 并且距离在合理范围内（比如100像素以内）
+                if (t >= 0 && t <= 1 && distance < 100 && distance < minDistance) {
+                    minDistance = distance;
+                    nearestZombie = sprite;
+                }
+            }
+        });
+
+        return nearestZombie;
     }
 }
