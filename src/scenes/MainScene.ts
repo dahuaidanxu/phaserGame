@@ -575,15 +575,20 @@ export class MainScene extends Phaser.Scene {
         // 计算基础角度
         const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetZombie.x, targetZombie.y);
         const speed = 800;
-        const spreadAngle = Math.PI / 18; // 10度扩散角
+        const spreadAngle = Math.PI / 18; // 弹道之间的角度差
 
         // 创建4条弹道
         for (let i = 0; i < 4; i++) {
             // 计算当前弹道的角度
             const angle = baseAngle - spreadAngle + (spreadAngle * 2 * i / 3);
             
-            // 每条弹道发射3颗子弹
+            // 每条弹道发射3颗子弹，依次排列
             for (let j = 0; j < 3; j++) {
+                // 计算子弹的偏移位置（让子弹依次排列）
+                const offsetDistance = j * 30; // 每颗子弹之间的间距增加到30像素
+                const offsetX = Math.cos(angle) * offsetDistance;
+                const offsetY = Math.sin(angle) * offsetDistance;
+
                 const velocityX = Math.cos(angle) * speed;
                 const velocityY = Math.sin(angle) * speed;
 
@@ -592,10 +597,14 @@ export class MainScene extends Phaser.Scene {
                     type: this.player.weaponType as BulletType,
                     speed: 800,
                     damage: this.skills.doubleDamage ? 4 : 2,
-                    penetration: 1 // 设置默认穿透值为1
+                    penetration: 1
                 };
-                const bullet = new Bullet(this, this.player.x, this.player.y, bulletConfig);
-                this.bullets.add(bullet); // 添加子弹到组中
+                const bullet = new Bullet(this, 
+                    this.player.x - offsetX, // 从玩家位置减去偏移量
+                    this.player.y - offsetY, 
+                    bulletConfig
+                );
+                this.bullets.add(bullet);
                 bullet.setVelocity(velocityX, velocityY);
                 bullet.setRotation(angle);
 
