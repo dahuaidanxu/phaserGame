@@ -80,6 +80,7 @@ export class MainScene extends Phaser.Scene {
         // 加载游戏资源
         this.load.image('player', PLAYER_IMAGE);
         this.load.image('zombie', ZOMBIE_IMAGE);
+        this.load.image('zombie-normal', 'public/zombieImage/zombie-normal/normal-1.svg');
         this.load.image('bullet', BULLET_IMAGE);
         this.load.image('background', 'public/bgImage/main-bg-new.jpg');
     }
@@ -744,16 +745,19 @@ export class MainScene extends Phaser.Scene {
                 zombieConfig = { 
                     type: 'normal', 
                     hp: 20, 
-                    speed: 8 + this.wave * 0.4, // 进一步提高普通僵尸速度
+                    speed: 8 + this.wave * 0.4,
                     scale: 1,
-                    canBePenetrated: true 
+                    canBePenetrated: true,
+                    texture: 'zombie-normal',
+                    displayWidth: 70,  // 设置显示宽度
+                    displayHeight: 100  // 设置显示高度
                 };
                 break;
             case 2:
                 zombieConfig = { 
                     type: 'fast', 
                     hp: 10, 
-                    speed: 16 + this.wave * 0.8, // 进一步提高快速僵尸速度
+                    speed: 16 + this.wave * 0.8,
                     scale: 1, 
                     tint: 0xff0000,
                     canBePenetrated: true 
@@ -763,7 +767,7 @@ export class MainScene extends Phaser.Scene {
                 zombieConfig = { 
                     type: 'elite', 
                     hp: 40, 
-                    speed: 6 + this.wave * 0.3, // 进一步提高精英僵尸速度
+                    speed: 6 + this.wave * 0.3,
                     scale: 1.5, 
                     tint: 0x0000ff,
                     canBePenetrated: false
@@ -773,7 +777,7 @@ export class MainScene extends Phaser.Scene {
                 zombieConfig = { 
                     type: 'boss', 
                     hp: 100, 
-                    speed: 4, // 进一步提高Boss速度
+                    speed: 4,
                     scale: 2, 
                     tint: 0xff00ff,
                     canBePenetrated: false
@@ -785,7 +789,10 @@ export class MainScene extends Phaser.Scene {
                     hp: 20, 
                     speed: 8, 
                     scale: 1,
-                    canBePenetrated: true 
+                    canBePenetrated: true,
+                    texture: 'zombie-normal',
+                    displayWidth: 70,  // 设置显示宽度
+                    displayHeight: 100  // 设置显示高度
                 };
         }
         const zombie = new Zombie(this, x, this.viewY, zombieConfig);

@@ -7,4 +7,7 @@ export interface ZombieConfig {
   scale?: number;
   tint?: number;
   canBePenetrated?: boolean;
+  texture?: string;
+  displayWidth?: number;
+  displayHeight?: number;
 } 

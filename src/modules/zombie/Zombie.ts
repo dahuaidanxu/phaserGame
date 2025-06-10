@@ -10,7 +10,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   canBePenetrated: boolean; // 是否可被穿透
 
   constructor(scene: Phaser.Scene, x: number, y: number, config: ZombieConfig) {
-    super(scene, x, y, 'zombie');
+    super(scene, x, y, config.texture || 'zombie');
     this.type = config.type;
     this.hp = config.hp;
     this.speed = config.speed;
@@ -19,6 +19,11 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     
     if (config.scale) this.setScale(config.scale);
     if (config.tint) this.setTint(config.tint);
+    
+    // 设置显示大小
+    if (config.displayWidth && config.displayHeight) {
+      this.setDisplaySize(config.displayWidth, config.displayHeight);
+    }
     
     scene.add.existing(this);
     scene.physics.add.existing(this);
