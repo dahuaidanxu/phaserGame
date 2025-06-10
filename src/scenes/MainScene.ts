@@ -553,10 +553,6 @@ export class MainScene extends Phaser.Scene {
     }
 
     private fire(): void {
-        // 检查是否有僵尸
-        const hasZombies = this.zombies.getChildren().some((zombie) => zombie.active);
-        if (!hasZombies || !this.player.canFire()) return;
-
         // 找到最近的僵尸
         let nearestZombie: Phaser.Physics.Arcade.Sprite | null = null;
         let minDistance = Infinity;
@@ -571,39 +567,44 @@ export class MainScene extends Phaser.Scene {
             }
         });
 
-        // 计算子弹方向
-        let angle: number;
-        let velocityX: number;
-        let velocityY: number;
-        const speed = 800;
-
-        if (nearestZombie) {
-            // 如果有僵尸，瞄准最近的僵尸
-            const zombie = nearestZombie as Phaser.Physics.Arcade.Sprite;
-            angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, zombie.x, zombie.y);
-        } else {
+        if (!nearestZombie) {
             return; // 如果没有僵尸，不发射子弹
         }
 
-        velocityX = Math.cos(angle) * speed;
-        velocityY = Math.sin(angle) * speed;
+        const targetZombie = nearestZombie as Phaser.Physics.Arcade.Sprite;
+        // 计算基础角度
+        const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetZombie.x, targetZombie.y);
+        const speed = 800;
+        const spreadAngle = Math.PI / 18; // 10度扩散角
 
-        // 发射子弹
-        const bulletConfig: BulletConfig = {
-            type: this.player.weaponType as BulletType,
-            speed: 800,
-            damage: this.skills.doubleDamage ? 4 : 2,
-            penetration: 1 // 设置默认穿透值为1
-        };
-        const bullet = new Bullet(this, this.player.x, this.player.y, bulletConfig);
-        this.bullets.add(bullet); // 添加子弹到组中
-        bullet.setVelocity(velocityX, velocityY);
-        bullet.setRotation(angle);
+        // 创建4条弹道
+        for (let i = 0; i < 4; i++) {
+            // 计算当前弹道的角度
+            const angle = baseAngle - spreadAngle + (spreadAngle * 2 * i / 3);
+            
+            // 每条弹道发射3颗子弹
+            for (let j = 0; j < 3; j++) {
+                const velocityX = Math.cos(angle) * speed;
+                const velocityY = Math.sin(angle) * speed;
 
-        // 添加子弹特效
-        this.createBulletTrail(bullet);
+                // 发射子弹
+                const bulletConfig: BulletConfig = {
+                    type: this.player.weaponType as BulletType,
+                    speed: 800,
+                    damage: this.skills.doubleDamage ? 4 : 2,
+                    penetration: 1 // 设置默认穿透值为1
+                };
+                const bullet = new Bullet(this, this.player.x, this.player.y, bulletConfig);
+                this.bullets.add(bullet); // 添加子弹到组中
+                bullet.setVelocity(velocityX, velocityY);
+                bullet.setRotation(angle);
 
-        // 更新玩家弹药
+                // 添加子弹特效
+                this.createBulletTrail(bullet);
+            }
+        }
+
+        // 更新玩家弹药（只扣除一颗子弹）
         this.player.fire();
     }
 
