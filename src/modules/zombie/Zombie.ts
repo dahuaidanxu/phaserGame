@@ -31,7 +31,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.setVisible(true);
     
     // 设置碰撞属性
-    this.setCircle(24); // 增加碰撞半径为24像素
+    this.setCircle(20); // 调整碰撞半径为20像素，使其更合理
     this.setBounce(0);
     this.setCollideWorldBounds(false);
     this.setImmovable(false); // 确保僵尸可以被推动
