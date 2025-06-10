@@ -585,7 +585,7 @@ export class MainScene extends Phaser.Scene {
             // 每条弹道发射3颗子弹，依次排列
             for (let j = 0; j < 3; j++) {
                 // 计算子弹的偏移位置（让子弹依次排列）
-                const offsetDistance = j * 30; // 每颗子弹之间的间距增加到30像素
+                const offsetDistance = j * 50; // 每颗子弹之间的间距增加到30像素
                 const offsetX = Math.cos(angle) * offsetDistance;
                 const offsetY = Math.sin(angle) * offsetDistance;
 
