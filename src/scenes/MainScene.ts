@@ -133,7 +133,7 @@ export class MainScene extends Phaser.Scene {
         // 僵尸组
         this.zombies = this.physics.add.group({
             defaultKey: 'zombie',
-            maxSize: 100
+            maxSize: 300
         });
         // 道具组
         this.items = this.physics.add.group({
@@ -160,27 +160,61 @@ export class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.zombies, this.hitPlayer as any, undefined, this);
         this.physics.add.collider(this.player, this.items, this.collectItem as any, undefined, this);
 
-        // 添加调试信息
-        this.physics.world.on('worldstep', () => {
-            this.bullets.getChildren().forEach((bullet) => {
-                if (bullet.active) {
-                    const bulletSprite = bullet as Phaser.Physics.Arcade.Sprite;
-                    this.zombies.getChildren().forEach((zombie) => {
-                        if (zombie.active) {
-                            const zombieSprite = zombie as Phaser.Physics.Arcade.Sprite;
-                            const distance = Phaser.Math.Distance.Between(
-                                bulletSprite.x, bulletSprite.y,
-                                zombieSprite.x, zombieSprite.y
-                            );
-                            if (distance < 32) { // 如果距离小于碰撞半径之和
-                                console.log('检测到碰撞！');
-                                this.hitZombie(bullet as Bullet, zombie as Zombie);
-                            }
-                        }
-                    });
-                }
-            });
-        });
+        // 初始化时直接生成100只僵尸
+        for (let i = 0; i < 100; i++) {
+            const x = Phaser.Math.Between(this.viewX + 50, this.viewX + this.viewW - 50);
+            const y = this.viewY + 50; // 固定在屏幕上方
+            let type = Phaser.Math.Between(1, 3);
+            let zombieConfig: ZombieConfig;
+            
+            switch (type) {
+                case 1:
+                    zombieConfig = { 
+                        type: 'normal', 
+                        hp: 20, 
+                        speed: 8 + this.wave * 0.4,
+                        scale: 1,
+                        canBePenetrated: true,
+                        texture: 'zombie-normal',
+                        displayWidth: 70,
+                        displayHeight: 100
+                    };
+                    break;
+                case 2:
+                    zombieConfig = { 
+                        type: 'fast', 
+                        hp: 10, 
+                        speed: 16 + this.wave * 0.8,
+                        scale: 1, 
+                        tint: 0xff0000,
+                        canBePenetrated: true 
+                    };
+                    break;
+                case 3:
+                    zombieConfig = { 
+                        type: 'elite', 
+                        hp: 40, 
+                        speed: 6 + this.wave * 0.3,
+                        scale: 1.5, 
+                        tint: 0x0000ff,
+                        canBePenetrated: false
+                    };
+                    break;
+                default:
+                    zombieConfig = { 
+                        type: 'normal', 
+                        hp: 20, 
+                        speed: 8, 
+                        scale: 1,
+                        canBePenetrated: true,
+                        texture: 'zombie-normal',
+                        displayWidth: 70,
+                        displayHeight: 100
+                    };
+            }
+            const zombie = new Zombie(this, x, y, zombieConfig);
+            this.zombies.add(zombie);
+        }
 
         // 定时生成僵尸
         this.zombieSpawnTimer = this.time.addEvent({
@@ -482,7 +516,11 @@ export class MainScene extends Phaser.Scene {
     private nextWave(): void {
         this.wave++;
         this.waveText.setText('波次: ' + this.wave);
-        this.zombieSpawnDelay = Math.max(500, this.zombieSpawnDelay - 200);
+        
+        // 重置僵尸生成延迟
+        this.zombieSpawnDelay = 2000;
+        
+        // 更新僵尸生成定时器
         this.zombieSpawnTimer.remove(false);
         this.zombieSpawnTimer = this.time.addEvent({
             delay: this.zombieSpawnDelay,
@@ -731,15 +769,31 @@ export class MainScene extends Phaser.Scene {
     }
 
     private spawnZombie(): void {
-        const x = Phaser.Math.Between(this.viewX + 50, this.viewX + this.viewW - 50);
-        let type: number;
-        // 每10波出现一个Boss
-        if (this.wave % 10 === 0 && !this.zombies.getChildren().some((z: any) => z.getData('type') === 'boss')) {
-            type = 4; // Boss
-        } else {
-            type = Phaser.Math.Between(1, 3);
+        // 检查当前僵尸数量
+        const currentZombieCount = this.zombies.getChildren().filter(zombie => zombie.active).length;
+        
+        // 如果僵尸数量超过300，停止生成
+        if (currentZombieCount >= 300) {
+            return;
         }
+
+        // 根据当前僵尸数量动态调整生成频率
+        if (currentZombieCount < 100) {
+            // 如果僵尸数量少于100，加快生成速度
+            this.zombieSpawnDelay = Math.max(500, this.zombieSpawnDelay - 100);
+        } else if (currentZombieCount > 200) {
+            // 如果僵尸数量超过200，减慢生成速度
+            this.zombieSpawnDelay = Math.min(2000, this.zombieSpawnDelay + 100);
+        }
+
+        // 随机生成位置（在屏幕上方）
+        const x = Phaser.Math.Between(this.viewX + 50, this.viewX + this.viewW - 50);
+        const y = this.viewY + 50;
+
+        // 根据波数决定生成什么类型的僵尸
+        let type = Phaser.Math.Between(1, 3);
         let zombieConfig: ZombieConfig;
+
         switch (type) {
             case 1:
                 zombieConfig = { 
@@ -749,8 +803,8 @@ export class MainScene extends Phaser.Scene {
                     scale: 1,
                     canBePenetrated: true,
                     texture: 'zombie-normal',
-                    displayWidth: 70,  // 设置显示宽度
-                    displayHeight: 100  // 设置显示高度
+                    displayWidth: 70,
+                    displayHeight: 100
                 };
                 break;
             case 2:
@@ -773,16 +827,6 @@ export class MainScene extends Phaser.Scene {
                     canBePenetrated: false
                 };
                 break;
-            case 4:
-                zombieConfig = { 
-                    type: 'boss', 
-                    hp: 100, 
-                    speed: 4,
-                    scale: 2, 
-                    tint: 0xff00ff,
-                    canBePenetrated: false
-                };
-                break;
             default:
                 zombieConfig = { 
                     type: 'normal', 
@@ -791,12 +835,22 @@ export class MainScene extends Phaser.Scene {
                     scale: 1,
                     canBePenetrated: true,
                     texture: 'zombie-normal',
-                    displayWidth: 70,  // 设置显示宽度
-                    displayHeight: 100  // 设置显示高度
+                    displayWidth: 70,
+                    displayHeight: 100
                 };
         }
-        const zombie = new Zombie(this, x, this.viewY, zombieConfig);
+
+        const zombie = new Zombie(this, x, y, zombieConfig);
         this.zombies.add(zombie);
+
+        // 更新僵尸生成定时器
+        this.zombieSpawnTimer.remove(false);
+        this.zombieSpawnTimer = this.time.addEvent({
+            delay: this.zombieSpawnDelay,
+            callback: this.spawnZombie,
+            callbackScope: this,
+            loop: true
+        });
     }
 
     private hitZombie(bullet: Bullet, zombie: Zombie): void {
